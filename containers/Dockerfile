@@ -4,7 +4,7 @@
 # =========================================================
 FROM ubuntu:22.04
 
-LABEL maintainer="François Faramus <francois@exemple.com>"
+LABEL maintainer="François Faramus <francois.faramus974@gmail.com>"
 LABEL description="Common Docker environment for RNA-seq workflow (Nextflow)"
 
 # --------------------------
