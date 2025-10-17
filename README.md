@@ -25,18 +25,21 @@ to analyze RNA-Seq data and reproduce the paper’s results.
 ## Repository Structure
 
 rna-seq-s-aureus-persisters/
-├── main.nf
-├── nextflow.config
-├── run.sh
-├── containers/
-├── conf/
-├── resources/
-│ ├── genome/
-│ └── samplesheets/
-├── modules/
-├── scripts/
-├── results/
-└── reports/
+    - main.nf
+    - nextflow.config
+    - run.sh
+    - containers/
+        - Dockerfile
+    - conf/
+    - resources/
+        - genome/
+            - annotation.gff
+            - CP000253.1.fna
+        - samplesheets/
+    - modules/
+    - scripts/
+    - results/
+    - reports/
 
 
 ---
