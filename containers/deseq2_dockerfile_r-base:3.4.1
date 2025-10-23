@@ -1,0 +1,28 @@
+FROM r-base:3.4.1
+
+# Configure le fuseau horaire
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Europe/Paris
+
+# Installe les dépendances système nécessaires
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libxml2-dev \
+        libssl-dev \
+        libcurl4-openssl-dev \
+        tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+# Installe BiocManager et configure Bioconductor 3.6
+RUN R -e "install.packages('BiocManager', repos='https://cran.r-project.org', dependencies=TRUE)"
+RUN R -e "BiocManager::install(version = '3.6')"
+
+# Installe DESeq2 version 1.16.1
+RUN R -e "BiocManager::install('DESeq2', version = '1.16.1')"
+
+# Configure le dossier de travail et copie les scripts
+WORKDIR /app
+COPY . .
+
+# Définit la commande par défaut
+CMD ["R"]
