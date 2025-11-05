@@ -1,60 +1,78 @@
-# =========================================================
-# Bowtie (v0.12.7) + Samtools in a reproducible container
-# =========================================================
-FROM ubuntu:22.04
+# ============================================================================
+# 🧬 Dockerfile : Bowtie 0.12.7 + Samtools 0.1.19 (legacy build)
+# Auteur : François Faramus
+# Objet : Reproduire l'environnement exact de l'étude de 2011
+# ============================================================================
+FROM ubuntu:16.04
 
-LABEL maintainer="Ton nom <ton.email@exemple.com>"
-LABEL description="Bowtie 0.12.7 + Samtools for RNA-seq mapping (paper-faithful)"
-LABEL org.opencontainers.image.source="https://github.com/Groutmout/rna-seq-s-aureus-persisters"
+LABEL maintainer="francois.faramus@agroparistech.fr" \
+      version="0.12.7" \
+      description="Docker container for Bowtie 0.12.7 and Samtools 0.1.19 (2011-compatible build)"
 
-# ---- OS deps
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    wget curl ca-certificates bzip2 coreutils gzip pigz tar procps \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+# ----------------------------------------------------------------------------
+# Étape 1 — Installer les dépendances système
+# ----------------------------------------------------------------------------
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    zlib1g-dev \
+    wget \
+    unzip \
+    python \
+    libncurses5-dev \
+    libbz2-dev \
+    liblzma-dev \
+    git \
+ && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# ---- Miniconda
-ENV CONDA_DIR=/opt/conda
-RUN curl -fsSL https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
-      -o /tmp/miniconda.sh \
- && bash /tmp/miniconda.sh -b -p ${CONDA_DIR} \
- && rm /tmp/miniconda.sh
-ENV PATH="${CONDA_DIR}/bin:${PATH}"
+WORKDIR /opt
 
-# ---- Channels & mamba (accept TOS for Anaconda channels)
-RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main \
- && conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r \
- && conda config --system --add channels conda-forge \
- && conda config --system --add channels bioconda \
- && conda install -y mamba
+# ----------------------------------------------------------------------------
+# Étape 2 — Télécharger et compiler Bowtie 0.12.7
+# ----------------------------------------------------------------------------
+RUN wget -q https://downloads.sourceforge.net/project/bowtie-bio/bowtie/0.12.7/bowtie-0.12.7-src.zip && \
+    unzip bowtie-0.12.7-src.zip && \
+    cd bowtie-0.12.7 && \
+    # Patch pour compatibilité g++ modernes
+    sed -i '1i #include <algorithm>' alphabet.h && \
+    sed -i 's/-O3/-O3 -fpermissive/' Makefile && \
+    make && \
+    ln -s /opt/bowtie-0.12.7/bowtie* /usr/local/bin/
 
-# ---- Bio tools (versions épinglées)
-# Bowtie 0.12.7 (historique, paper-faithful), Samtools compatible
-# ---- Installer Python compatible + outils bio
-RUN mamba install -y \
-      python=3.10 \
-      bowtie=1.3.1 \
-      samtools=1.16.1 \
- && conda clean -a -y
+# ----------------------------------------------------------------------------
+# Étape 3 — Télécharger et compiler Samtools 0.1.19 (compatible Ubuntu 16.04)
+# ----------------------------------------------------------------------------
+RUN wget -q https://github.com/samtools/samtools/archive/refs/tags/0.1.19.tar.gz -O samtools-0.1.19.tar.gz && \
+    tar -xzf samtools-0.1.19.tar.gz && \
+    cd samtools-0.1.19 && \
+    sed -i 's/-lcurses/-lncurses/' Makefile && \
+    make CFLAGS="-O2 -fcommon -D_CURSES_LIB=1" && \
+    cp samtools /usr/local/bin/ && \
+    cp bcftools/bcftools /usr/local/bin/ && \
+    cp misc/md5sum-lite /usr/local/bin/
 
-# ---- Répertoire de travail par défaut
+# ----------------------------------------------------------------------------
+# Étape 4 — Ajouter le script helper "bowtie-map"
+# ----------------------------------------------------------------------------
+RUN echo '#!/bin/bash' > /usr/local/bin/bowtie-map && \
+    echo 'set -e' >> /usr/local/bin/bowtie-map && \
+    echo 'if [ "$#" -lt 4 ]; then' >> /usr/local/bin/bowtie-map && \
+    echo '  echo "Usage: bowtie-map <index> <fastq.gz> <threads> <output.bam>"' >> /usr/local/bin/bowtie-map && \
+    echo '  exit 1' >> /usr/local/bin/bowtie-map && \
+    echo 'fi' >> /usr/local/bin/bowtie-map && \
+    echo 'INDEX=$1' >> /usr/local/bin/bowtie-map && \
+    echo 'FASTQ=$2' >> /usr/local/bin/bowtie-map && \
+    echo 'THREADS=$3' >> /usr/local/bin/bowtie-map && \
+    echo 'OUT=$4' >> /usr/local/bin/bowtie-map && \
+    echo 'bowtie -p ${THREADS} -S ${INDEX} <(gunzip -c ${FASTQ}) | samtools view -Sb - | samtools sort -@ ${THREADS} -o ${OUT}' >> /usr/local/bin/bowtie-map && \
+    echo 'samtools index ${OUT}' >> /usr/local/bin/bowtie-map && \
+    chmod +x /usr/local/bin/bowtie-map
+
+# ----------------------------------------------------------------------------
+# Étape 5 — Répertoire de travail par défaut
+# ----------------------------------------------------------------------------
 WORKDIR /data
 
-# ---- Petite commande utilitaire: bowtie-map
-# Usage:
-#   bowtie-map ref_index reads.fastq.gz 4 out.bam
-# Fait: zcat -> bowtie (-S) -> samtools sort -> index
-# ---- Ajouter un petit script helper "bowtie-map" ----
-RUN printf '#!/usr/bin/env bash\n\
-set -euo pipefail\n\
-if [ "$#" -lt 4 ]; then\n\
-  echo "Usage: bowtie-map <index_base> <reads.fastq(.gz)> <threads> <out.bam>" >&2; exit 1; fi\n\
-IDX=$1; FQ=$2; T=$3; OUT=$4;\n\
-if [[ "$FQ" == *.gz ]]; then\n\
-  gunzip -c "$FQ" | bowtie -p $T -S $IDX - | samtools sort -@ $T -o $OUT\n\
-else\n\
-  cat "$FQ" | bowtie -p $T -S $IDX - | samtools sort -@ $T -o $OUT\n\
-fi\n\
-samtools index $OUT\n' > /usr/local/bin/bowtie-map && chmod +x /usr/local/bin/bowtie-map
-
-# ---- Commande par défaut
-CMD ["/bin/bash"]
+# ----------------------------------------------------------------------------
+# Étape 6 — Commande par défaut : version de Bowtie
+# ----------------------------------------------------------------------------
+CMD ["bowtie", "--version"]
