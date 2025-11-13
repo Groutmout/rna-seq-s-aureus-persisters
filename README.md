@@ -2,7 +2,7 @@
 
 Ce dépôt contient un pipeline **Nextflow DSL2** entièrement reproductible permettant de reproduire l'analyse RNA-seq décrite dans l'article :
 
-> *Lechner et al., Nature Communications (2020)* — Analyse transcriptomique de **Staphylococcus aureus USA300**.
+> [Nature Communications](https://www.nature.com/articles/s41467-020-15966-7) (2020) “Intracellular Staphylococcus aureus persisters upon antibiotic exposure.”
 
 Le pipeline suit les étapes :
 FASTQ → trimming → download du génome → indexation → alignement → comptage → analyse différentielle.
