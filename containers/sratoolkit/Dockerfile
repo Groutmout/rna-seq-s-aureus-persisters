@@ -18,5 +18,5 @@ SHELL ["/bin/bash", "-lc"]
 
 WORKDIR /data
 
-ENTRYPOINT ["micromamba", "run", "-n", "base"]
-
+ENV PATH="/tmp/mamba/bin:${PATH}"
+ENTRYPOINT ["fasterq-dump"]

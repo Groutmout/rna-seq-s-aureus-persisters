@@ -22,7 +22,7 @@ process DOWNLOAD_FASTQ {
 
     script:
         """
-        fasterq-dump ${id} --threads 4 -O .
+        fasterq-dump ${id} --threads ${task.cpus} -O .
         gzip ${id}.fastq
         """
 

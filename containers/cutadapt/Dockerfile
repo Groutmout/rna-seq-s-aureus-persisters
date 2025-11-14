@@ -1,9 +1,11 @@
-FROM python:3.11-slim
+FROM mambaorg/micromamba:1.5.8
 
 LABEL software="cutadapt"
 LABEL version="1.11"
 
-# Install cutadapt with fixed version for reproducibility
-RUN pip install --no-cache-dir cutadapt==1.11
+RUN micromamba install -y -n base -c bioconda -c conda-forge cutadapt=1.11 python=3.5 && \
+    micromamba clean -a -y
 
-ENTRYPOINT ["cutadapt"]
+WORKDIR /data
+
+ENTRYPOINT ["micromamba", "run", "-n", "base", "cutadapt"]
