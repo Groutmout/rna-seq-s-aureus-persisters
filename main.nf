@@ -1,11 +1,7 @@
 #!/usr/bin/env nextflow
-nextflow.enable.dsl = 2
+nextflow.enable.dsl=2
 
-//
-// Paramètres
-//
 params.outdir  = params.outdir  ?: "results"
-
 
 /*
  * 1) Téléchargement des lectures
@@ -18,14 +14,21 @@ process DOWNLOAD_FASTQ {
         val id
 
     output:
-        tuple val(id), path("${id}.fastq.gz")
+        tuple val(id), path("${id}.fastq.gz"), emit: fastq
+        path "versions.yml", emit: versions
 
     script:
-        """
-        fasterq-dump ${id} --threads ${task.cpus} -O .
-        gzip ${id}.fastq
-        """
+    """
+    fasterq-dump ${id} --threads ${task.cpus} -O .
+    gzip ${id}.fastq
+    echo "fasterq-dump: `fasterq-dump --version 2>&1 | head -1`" > versions.yml
+    """
 
+    stub:
+    """
+    touch ${id}.fastq.gz
+    echo "fasterq-dump: stub" > versions.yml
+    """
 }
 
 /*
@@ -39,14 +42,22 @@ process TRIM {
         tuple val(id), path(read)
 
     output:
-        tuple val(id), path("${id}.trimmed.fastq.gz")
+        tuple val(id), path("${id}.trimmed.fastq.gz"), emit: fastq
+        path "versions.yml", emit: versions
 
     script:
-        """
-        cutadapt -q 20 --phred33 --length 25 \
-            -o ${id}.trimmed.fastq.gz \
-            ${read}
-        """
+    """
+    cutadapt -q 20 --phred33 --length 25 \
+        -o ${id}.trimmed.fastq.gz \
+        ${read}
+    echo "cutadapt: `cutadapt --version`" > versions.yml
+    """
+
+    stub:
+    """
+    touch ${id}.trimmed.fastq.gz
+    echo "cutadapt: stub" > versions.yml
+    """
 }
 
 /*
@@ -58,15 +69,22 @@ process DOWNLOAD_REFERENCE {
     output:
         path "reference.fasta", emit: fasta
         path "reference.gff3",  emit: gff
+        path "versions.yml", emit: versions
 
     script:
-        """
-        wget -q -O reference.fasta \
-          "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=CP000253.1&rettype=fasta"
+    """
+    wget -q -O reference.fasta \
+        "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=CP000253.1&rettype=fasta"
+    wget -q -O reference.gff3 \
+        "https://www.ncbi.nlm.nih.gov/sviewer/viewer.cgi?db=nuccore&report=gff3&id=CP000253.1"
+    echo "wget: `wget --version | head -1`" > versions.yml
+    """
 
-        wget -q -O reference.gff3 \
-          "https://www.ncbi.nlm.nih.gov/sviewer/viewer.cgi?db=nuccore&report=gff3&id=CP000253.1"
-        """
+    stub:
+    """
+    touch reference.fasta reference.gff3
+    echo "wget: stub" > versions.yml
+    """
 }
 
 /*
@@ -81,11 +99,19 @@ process INDEX {
 
     output:
         path "index.*", emit: index
+        path "versions.yml", emit: versions
 
     script:
-        """
-        bowtie-build ${fasta} index
-        """
+    """
+    bowtie-build ${fasta} index
+    echo "bowtie-build: `bowtie-build --version | head -1`" > versions.yml
+    """
+
+    stub:
+    """
+    touch index.1 index.2 index.3 index.4
+    echo "bowtie-build: stub" > versions.yml
+    """
 }
 
 /*
@@ -100,15 +126,24 @@ process ALIGN {
         path index_files
 
     output:
-        tuple val(id), path("${id}.bam")
+        tuple val(id), path("${id}.bam"), emit: bam
+        path "versions.yml", emit: versions
 
     script:
-        """
-        bowtie -S -p 4 index ${read} \
-            | samtools sort -o ${id}.bam
+    """
+    bowtie -S -p ${task.cpus} index ${read} \
+        | samtools sort -@ ${task.cpus} -o ${id}.bam
+    samtools index ${id}.bam
+    echo "bowtie: `bowtie --version | head -1`" > versions.yml
+    echo "samtools: `samtools --version | head -1`" >> versions.yml
+    """
 
-        samtools index ${id}.bam
-        """
+    stub:
+    """
+    touch ${id}.bam
+    echo "bowtie: stub" > versions.yml
+    echo "samtools: stub" >> versions.yml
+    """
 }
 
 /*
@@ -123,19 +158,27 @@ process COUNT {
         path gff
 
     output:
-        path "counts_${id}.txt"
+        path "counts_${id}.txt", emit: counts
+        path "versions.yml", emit: versions
 
     script:
-        """
-        featureCounts \
-            -F GFF \
-            -t gene \
-            -g ID \
-            -T 4 \
-            -a ${gff} \
-            -o counts_${id}.txt \
-            ${bam}
-        """
+    """
+    featureCounts \
+        -F GFF \
+        -t gene \
+        -g ID \
+        -T ${task.cpus} \
+        -a ${gff} \
+        -o counts_${id}.txt \
+        ${bam}
+    echo "featureCounts: `featureCounts -v 2>&1 | head -1`" > versions.yml
+    """
+
+    stub:
+    """
+    touch counts_${id}.txt
+    echo "featureCounts: stub" > versions.yml
+    """
 }
 
 /*
@@ -149,12 +192,20 @@ process DESEQ2 {
         val samples_metadata
 
     output:
-        path "deseq2_results.csv"
+        path "deseq2_results.csv", emit: results
+        path "versions.yml", emit: versions
 
     script:
-        """
-        Rscript /scripts/run_deseq2.R ${counts_files.join(" ")} deseq2_results.csv
-        """
+    """
+    Rscript /scripts/run_deseq2.R ${counts_files.join(" ")} deseq2_results.csv
+    echo "Rscript: `Rscript --version | head -1`" > versions.yml
+    """
+
+    stub:
+    """
+    touch deseq2_results.csv
+    echo "Rscript: stub" > versions.yml
+    """
 }
 
 /*
@@ -162,32 +213,24 @@ process DESEQ2 {
  */
 workflow {
 
-    /*
-     * Charger le sample sheet dans le workflow (obligatoire en DSL2)
-     */
     def sample_list = file("$baseDir/samples.tsv").splitCsv(header:true, sep:'\t')
 
     samples_ch = Channel.from(sample_list)
-    // samples_ch.view()
-
     sra_ids_ch = samples_ch.map { row -> row.sra }
-    // sra_ids_ch.view()
 
-
-    reads_ch = DOWNLOAD_FASTQ(sra_ids_ch)
-    trimmed_ch = TRIM(reads_ch)
+    reads_ch = DOWNLOAD_FASTQ(sra_ids_ch).fastq
+    trimmed_ch = TRIM(reads_ch).fastq
 
     ref        = DOWNLOAD_REFERENCE()
     fasta_ch   = ref.fasta
     gff_ch     = ref.gff
 
-    index_ch   = INDEX(fasta_ch)
-    aligned_ch = ALIGN(trimmed_ch, index_ch)
-    counts_ch  = COUNT(aligned_ch, gff_ch)
+    index_ch   = INDEX(fasta_ch).index
+    aligned_ch = ALIGN(trimmed_ch, index_ch).bam
+    counts_ch  = COUNT(aligned_ch, gff_ch).counts
 
     all_counts = counts_ch.collect()
 
     samples_ch.collect().set { samples_metadata }
     DESEQ2(all_counts, samples_metadata)
 }
-

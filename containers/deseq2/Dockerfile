@@ -17,6 +17,9 @@ RUN micromamba install -y -n base -c conda-forge -c bioconda \
 
 SHELL ["/bin/bash", "-lc"]
 
+USER root
+RUN apt-get update && apt-get install -y procps && rm -rf /var/lib/apt/lists/*
+
 ENTRYPOINT ["micromamba", "run", "-n", "base"]
 
 WORKDIR /data

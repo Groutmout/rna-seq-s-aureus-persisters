@@ -19,4 +19,6 @@ SHELL ["/bin/bash", "-lc"]
 WORKDIR /data
 
 ENV PATH="/tmp/mamba/bin:${PATH}"
+
+USER root
 ENTRYPOINT ["fasterq-dump"]
