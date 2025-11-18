@@ -9,6 +9,8 @@ RUN apt-get update && apt-get install -y procps && \
     micromamba install -y -n base -c bioconda -c conda-forge cutadapt=1.11 python=3.5 && \
     micromamba clean -a -y
 
+ENV PATH="/opt/conda/envs/base/bin:/opt/conda/bin:$PATH"
+
 WORKDIR /data
 
-ENTRYPOINT ["micromamba", "run", "-n", "base", "cutadapt"]
+CMD ["bash"]
