@@ -37,6 +37,7 @@ process DOWNLOAD_FASTQ {
 process TRIM {
     tag "$id"
     publishDir "${params.outdir}/trimmed", mode: 'copy'
+    container 'alantrbt/cutadapt:1.11'
 
     input:
         tuple val(id), path(read)
@@ -47,7 +48,7 @@ process TRIM {
 
     script:
     """
-    cutadapt -q 20 --phred33 --length 25 \
+    cutadapt -q 20 --length 25 \
         -o ${id}.trimmed.fastq.gz \
         ${read}
     echo "cutadapt: `cutadapt --version`" > versions.yml
