@@ -68,13 +68,15 @@ process DOWNLOAD_REFERENCE {
 
     output:
         path "reference.fasta", emit: fasta
-        path "reference.gff3",  emit: gff
+        path "reference.gff3",  emit: gff3
         path "versions.yml", emit: versions
 
     script:
     """
+     # Téléchargement fichier gff
     wget -q -O reference.gff3 \
         "https://www.ncbi.nlm.nih.gov/sviewer/viewer.cgi?db=nuccore&report=gff3&id=CP000253.1"
+    wget -q -O reference.fasta "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=CP000253.1&rettype=fasta"
     echo "wget: `wget --version | head -1`" > versions.yml
     """
 
@@ -84,6 +86,7 @@ process DOWNLOAD_REFERENCE {
     echo "wget: stub" > versions.yml
     """
 }
+
 
 /*
  * 4) Index Bowtie1
@@ -221,7 +224,7 @@ workflow {
 
     ref        = DOWNLOAD_REFERENCE()
     fasta_ch   = ref.fasta
-    gff_ch     = ref.gff
+    gff_ch     = ref.gff3
 
     index_ch   = INDEX(fasta_ch).index
     aligned_ch = ALIGN(trimmed_ch, index_ch).bam
