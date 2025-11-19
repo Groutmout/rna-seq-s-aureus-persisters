@@ -31,5 +31,7 @@ RUN wget -q https://github.com/samtools/samtools/archive/refs/tags/0.1.19.tar.gz
     cp misc/md5sum-lite /usr/local/bin/
 
 WORKDIR /data
-ENTRYPOINT ["bowtie"]
 
+USER root
+
+CMD ["bash"]

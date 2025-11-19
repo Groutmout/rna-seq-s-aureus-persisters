@@ -14,19 +14,18 @@ process DOWNLOAD_FASTQ {
         val id
 
     output:
-        tuple val(id), path("${id}.fastq.gz"), emit: fastq
+        tuple val(id), path("${id}.fastq"), emit: fastq
         path "versions.yml", emit: versions
 
     script:
     """
     fasterq-dump ${id} --threads ${task.cpus} -O .
-    gzip ${id}.fastq
     echo "fasterq-dump: `fasterq-dump --version 2>&1 | head -1`" > versions.yml
     """
 
     stub:
     """
-    touch ${id}.fastq.gz
+    touch ${id}.fastq
     echo "fasterq-dump: stub" > versions.yml
     """
 }
@@ -43,20 +42,20 @@ process TRIM {
         tuple val(id), path(read)
 
     output:
-        tuple val(id), path("${id}.trimmed.fastq.gz"), emit: fastq
+        tuple val(id), path("${id}.trimmed.fastq"), emit: fastq
         path "versions.yml", emit: versions
 
     script:
     """
     cutadapt -q 20 --length 25 \
-        -o ${id}.trimmed.fastq.gz \
+        -o ${id}.trimmed.fastq \
         ${read}
     echo "cutadapt: `cutadapt --version`" > versions.yml
     """
 
     stub:
     """
-    touch ${id}.trimmed.fastq.gz
+    touch ${id}.trimmed.fastq
     echo "cutadapt: stub" > versions.yml
     """
 }
@@ -74,8 +73,6 @@ process DOWNLOAD_REFERENCE {
 
     script:
     """
-    wget -q -O reference.fasta \
-        "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=CP000253.1&rettype=fasta"
     wget -q -O reference.gff3 \
         "https://www.ncbi.nlm.nih.gov/sviewer/viewer.cgi?db=nuccore&report=gff3&id=CP000253.1"
     echo "wget: `wget --version | head -1`" > versions.yml

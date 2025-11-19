@@ -21,4 +21,5 @@ WORKDIR /data
 ENV PATH="/tmp/mamba/bin:${PATH}"
 
 USER root
-ENTRYPOINT ["fasterq-dump"]
+
+CMD ["bash"]

@@ -17,3 +17,5 @@ RUN wget -O subread.tar.gz https://sourceforge.net/projects/subread/files/subrea
 ENV PATH="/usr/local/subread-1.4.6-p3-Linux-x86_64/bin:${PATH}"
 
 WORKDIR /data
+
+CMD ["bash"]
