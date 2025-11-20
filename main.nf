@@ -47,7 +47,7 @@ process TRIM {
 
     script:
     """
-    cutadapt -q 20 --length 25 \
+    cutadapt -q 20 -m 4 --length 25 \
         -o ${id}.trimmed.fastq \
         ${read}
     echo "cutadapt: `cutadapt --version`" > versions.yml
@@ -232,3 +232,4 @@ workflow {
     samples_ch.collect().set { samples_metadata }
     DESEQ2(all_counts, samples_metadata)
 }
+
