@@ -194,20 +194,22 @@ process DESEQ2 {
 
     output:
         path "deseq2_results.csv", emit: results
+        path "deseq2_plot.png", emit: plot
         path "versions.yml", emit: versions
 
     script:
     """
+    # Lancer le script DESeq2 qui génère le CSV
     Rscript /scripts/run_deseq2.R ${counts_files.join(" ")} deseq2_results.csv
-    echo "Rscript: `Rscript --version | head -1`" > versions.yml
-    """
 
-    stub:
-    """
-    touch deseq2_results.csv
-    echo "Rscript: stub" > versions.yml
+    # Lancer le script de plotting qui utilise le CSV pour créer l'image
+    Rscript /scripts/plot_deseq2_results.R deseq2_results.csv deseq2_plot.png
+
+    # Sauvegarder la version de R
+    echo "Rscript: \$(Rscript --version | head -1)" > versions.yml
     """
 }
+
 
 /*
  * Workflow principal
