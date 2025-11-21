@@ -47,7 +47,7 @@ process TRIM {
 
     script:
     """
-    cutadapt -q 20 --length 25 \
+    cutadapt -q 20 -m 4 --length 25 \
         -o ${id}.trimmed.fastq \
         ${read}
     echo "cutadapt: `cutadapt --version`" > versions.yml
@@ -75,6 +75,7 @@ process DOWNLOAD_REFERENCE {
     """
     wget -q -O reference.gff3 \
         "https://www.ncbi.nlm.nih.gov/sviewer/viewer.cgi?db=nuccore&report=gff3&id=CP000253.1"
+    wget -q -O reference.fasta "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=CP000253.1&rettype=fasta"
     echo "wget: `wget --version | head -1`" > versions.yml
     """
 
@@ -129,8 +130,10 @@ process ALIGN {
 
     script:
     """
-    bowtie -S -p ${task.cpus} index ${read} \
-        | samtools sort -@ ${task.cpus} -o ${id}.bam
+    bowtie -p ${task.cpus} --sam index ${read} > ${id}.sam
+    samtools view -bS ${id}.sam > ${id}.bam
+    samtools sort ${id}.bam ${id}.sorted
+    mv ${id}.sorted.bam ${id}.bam
     samtools index ${id}.bam
     echo "bowtie: `bowtie --version | head -1`" > versions.yml
     echo "samtools: `samtools --version | head -1`" >> versions.yml
