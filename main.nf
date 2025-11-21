@@ -130,7 +130,10 @@ process ALIGN {
 
     script:
     """
-    bowtie -p ${task.cpus} -S index ${read} ${id} | samtools sort -@ ${task.cpus} -o ${id}.bam
+    bowtie -p ${task.cpus} --sam index ${read} > ${id}.sam
+    samtools view -bS ${id}.sam > ${id}.bam
+    samtools sort ${id}.bam ${id}.sorted
+    mv ${id}.sorted.bam ${id}.bam
     samtools index ${id}.bam
     echo "bowtie: `bowtie --version | head -1`" > versions.yml
     echo "samtools: `samtools --version | head -1`" >> versions.yml
@@ -232,4 +235,3 @@ workflow {
     samples_ch.collect().set { samples_metadata }
     DESEQ2(all_counts, samples_metadata)
 }
-
